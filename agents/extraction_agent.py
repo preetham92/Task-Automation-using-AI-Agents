@@ -1,7 +1,7 @@
 import json
 import uuid
 from ocr.ocr_api_client import call_ocr_api
-from llm.gemini_client import call_llm
+from llm.ollama_client import call_llm
 
 # move to .env later
 CLIENT_ID = "assisto-demo-client"
