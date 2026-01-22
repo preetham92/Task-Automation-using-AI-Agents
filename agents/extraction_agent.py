@@ -1,7 +1,7 @@
 import json
 import uuid
 from ocr.ocr_api_client import call_ocr_api
-from llm.ollama_client import call_llm
+from llm.gemini_client import call_llm
 
 # move to .env later
 CLIENT_ID = "assisto-demo-client"
@@ -45,11 +45,12 @@ def extraction_agent(file_path, doc_type):
 
     
     prompt = f"""
-You are an AI system that extracts structured information from travel documents.
+You are a JSON extraction engine.
 
-Document Type: {doc_type}
+TASK:
+Extract the following fields from the travel document text.
 
-Extract the following fields if available:
+FIELDS (JSON keys):
 - passenger_name
 - ticket_number_or_pnr
 - date
@@ -59,14 +60,30 @@ Extract the following fields if available:
 - airline_or_train_name_or_any_other_provider
 - fare_amount
 
-Rules:
-- If a field is missing, set its value to null
-- Return ONLY valid JSON
-- Do NOT include explanations or extra text
+STRICT RULES:
+- Output ONLY a valid JSON object
+- Do NOT include markdown
+- Do NOT include explanations
+- Do NOT include backticks
+- If a value is missing, use null
+- Numbers must be numbers, not strings
 
-Document Text:
+OUTPUT FORMAT (example):
+{{
+  "passenger_name": "...",
+  "ticket_number_or_pnr": "...",
+  "date": "...",
+  "time": "...",
+  "from_location": "...",
+  "to_location": "...",
+  "airline_or_train_name_or_any_other_provider": "...",
+  "fare_amount": 0
+}}
+
+DOCUMENT TEXT:
 {raw_text}
 """
+
 
     last_error = None
 
