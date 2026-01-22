@@ -52,7 +52,7 @@ def call_llm(prompt, retries=2, timeout=120):
 
 
 # 🔽🔽🔽 CALL BLOCK 🔽🔽🔽
-if _name_ == "_main_":
+if __name__ == "_main_":
     try:
         prompt = "Say hello in one sentence"
         result = call_llm(prompt)
