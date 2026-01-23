@@ -1,0 +1,16 @@
+{
+  "claim_id": "CLM20260124035803",
+  "employee_id": "EMP001",
+  "employee_name": "Aarav Sharma",
+  "employee_role": "Associate",
+  "ticket_number_or_pnr": "AI-772-FLIGHT",
+  "source": "Bangalore",
+  "destination": "Delhi",
+  "travel_start_date": "2026-01-01",
+  "travel_end_date": "2026-01-01",
+  "total_amount": 18000.0,
+  "status": "PENDING_FINANCE_REVIEW",
+  "submission_timestamp": "2026-01-24T03:58:03.582261",
+  "document_filename": "document.pdf",
+  "original_filename": "E-ticket.pdf"
+}

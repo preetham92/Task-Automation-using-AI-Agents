@@ -1,0 +1,19 @@
+{
+  "claim_id": "CLM20260124034005",
+  "employee_id": "EMP001",
+  "employee_name": "",
+  "employee_role": "",
+  "ticket_number_or_pnr": "",
+  "source": "",
+  "destination": "",
+  "travel_start_date": "",
+  "travel_end_date": "",
+  "total_amount": 0.0,
+  "status": "APPROVED",
+  "submission_timestamp": "2026-01-24T03:40:05.886300",
+  "document_filename": "document.pdf",
+  "original_filename": "BoardingPass-Journey1-HQSJRF.pdf",
+  "finance_decision_timestamp": "2026-01-24T03:42:08.587077",
+  "finance_notes": "",
+  "approved_amount": 5000.0
+}

@@ -42,7 +42,7 @@ export function FinancierSidebar() {
           to="/"
           className="flex items-center gap-3 text-foreground hover:text-success transition-colors"
         >
-          <div className="p-2 rounded-lg bg-success/10">
+          <div className="p-0 rounded-lg bg-success/8">
             <Home className="h-5 w-5 text-success" />
           </div>
           {!collapsed && <span className="font-semibold">Finance Console</span>}

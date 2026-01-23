@@ -43,7 +43,7 @@ export function EmployeeSidebar() {
           to="/"
           className="flex items-center gap-3 text-foreground hover:text-primary transition-colors"
         >
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-0 rounded-lg bg-primary/8">
             <Home className="h-5 w-5 text-primary" />
           </div>
           {!collapsed && <span className="font-semibold">Employee Portal</span>}
