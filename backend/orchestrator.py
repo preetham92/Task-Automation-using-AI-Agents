@@ -181,47 +181,53 @@ class DocumentProcessingOrchestrator:
             notes=None
         )
         
-        # STAGE 3: BUSINESS VALIDATION
-        business_start = time.time()
-        business_result = self._validate_business(extracted)
-        business_time = time.time() - business_start
-        
-        if not business_result["is_valid"]:
-            reason = business_result['reason']
-            
-            self._log_audit(
-                audit_logs, claim_id, employee_id,
-                agent="business_validation_agent",
-                action="validate",
-                status="exception",
-                confidence=None,
-                proc_time=business_time,
-                api_calls=["business_rules_engine"],
-                notes=reason
-            )
-            
-            self._add_exception_claim(
-                claim_summaries, extracted, employee_id, claim_id,
-                exc_type="BUSINESS_EXCEPTION",
-                reason=reason
-            )
-            return
-        
-        self._log_audit(
-            audit_logs, claim_id, employee_id,
-            agent="business_validation_agent",
-            action="validate",
-            status="success",
-            confidence=None,
-            proc_time=business_time,
-            api_calls=["business_rules_engine"],
-            notes=None
-        )
-        
-        # ALL STAGES PASSED
-        self._add_validated_claim(
+        # EXTRACTION AND TECHNICAL VALIDATION PASSED - SAVE AS DRAFT
+        self._add_draft_claim(
             claim_summaries, extracted, employee_id, claim_id
         )
+    
+    def validate_and_finalize_claim(self, claim_id: str, updated_fields: dict) -> Dict[str, Any]:
+        """
+        Validate and finalize a DRAFT claim after user confirmation.
+        
+        Args:
+            claim_id: The claim ID to validate
+            updated_fields: User-edited fields from the confirmation UI
+            
+        Returns:
+            {
+                "success": bool,
+                "claim_status": str,
+                "reason": str (if validation failed)
+            }
+        """
+        # Merge updated fields with existing claim data
+        data = {
+            "passenger_name": updated_fields.get("passenger_name"),
+            "ticket_number_or_pnr": updated_fields.get("ticket_number_or_pnr"),
+            "date": updated_fields.get("date"),
+            "from_location": updated_fields.get("from_location"),
+            "to_location": updated_fields.get("to_location"),
+            "fare_amount": updated_fields.get("fare_amount"),
+            "doc_type": updated_fields.get("doc_type", "unknown"),
+            "confidence": updated_fields.get("confidence", 1.0)
+        }
+        
+        # Run business validation
+        business_result = self._validate_business(data)
+        
+        if not business_result["is_valid"]:
+            return {
+                "success": False,
+                "claim_status": "REQUIRES_REVIEW",
+                "reason": business_result['reason']
+            }
+        
+        return {
+            "success": True,
+            "claim_status": "READY_FOR_FINANCE_APPROVAL",
+            "reason": None
+        }
     
     def _validate_technical(self, data: dict) -> dict:
         """Apply technical validation rules."""
@@ -364,6 +370,36 @@ class DocumentProcessingOrchestrator:
         })
     
     @staticmethod
+    def _add_draft_claim(
+        claim_summaries: List[dict],
+        data: dict,
+        employee_id: str,
+        claim_id: str
+    ) -> None:
+        """Append draft claim summary (extraction complete, awaiting confirmation)."""
+        claim_summaries.append({
+            "claim_id": claim_id,
+            "employee_id": employee_id,
+            "claim_status": "DRAFT",
+            "travel_details": {
+                "passenger_name": data.get("passenger_name"),
+                "ticket_number_or_pnr": data.get("ticket_number_or_pnr"),
+                "date": data.get("date"),
+                "from_location": data.get("from_location"),
+                "to_location": data.get("to_location"),
+                "fare_amount": data.get("fare_amount"),
+                "doc_type": data.get("doc_type")
+            },
+            "quality_signals": {
+                "confidence": data.get("confidence"),
+                "exception_type": None,
+                "exception_reason": None,
+                "missing_fields": [],
+                "doc_type": data.get("doc_type")
+            }
+        })
+    
+    @staticmethod
     def _add_validated_claim(
         claim_summaries: List[dict],
         data: dict,
@@ -407,6 +443,8 @@ class ClaimDataStore:
     ├── claims/
     │   ├── CLM2026001_001.json
     │   ├── CLM2026001_002.json
+    ├── discarded/
+    │   ├── CLM2026001_001.json (older version)
     └── audit_logs/
         ├── CLM2026001_001_extraction_agent_20260123143025.json
         └── ...
@@ -416,9 +454,11 @@ class ClaimDataStore:
         self.storage_dir = storage_dir
         self.claims_dir = os.path.join(storage_dir, "claims")
         self.audit_dir = os.path.join(storage_dir, "audit_logs")
+        self.discarded_dir = os.path.join(storage_dir, "discarded")
         
         os.makedirs(self.claims_dir, exist_ok=True)
         os.makedirs(self.audit_dir, exist_ok=True)
+        os.makedirs(self.discarded_dir, exist_ok=True)
     
     def append_claims(self, claim_summaries: List[dict]) -> int:
         """Write claim summaries as individual files."""
@@ -448,6 +488,85 @@ class ClaimDataStore:
                 json.dump(log, f, indent=2, ensure_ascii=False)
         
         return len(audit_logs)
+    
+    def discard_existing_claim_by_ticket(self, ticket_number: str) -> bool:
+        """
+        Find and discard any ACTIVE claim with the given ticket number.
+        Moves the claim file to discarded/ and marks it as DISCARDED.
+        
+        Returns True if a claim was discarded, False otherwise.
+        """
+        if not ticket_number or str(ticket_number).lower() == "null":
+            return False
+        
+        all_claims = self.read_all_claims()
+        
+        for claim in all_claims:
+            # Check if this is an ACTIVE claim (not already discarded)
+            claim_status = claim.get("claim_status")
+            
+            # Only consider claims that are currently active (not DISCARDED)
+            if claim_status in ["DRAFT", "CONFIRMED", "READY_FOR_FINANCE_APPROVAL", "REQUIRES_REVIEW"]:
+                travel_details = claim.get("travel_details", {})
+                claim_ticket = travel_details.get("ticket_number_or_pnr", "")
+                
+                if claim_ticket == ticket_number:
+                    claim_id = claim.get("claim_id")
+                    old_filepath = os.path.join(self.claims_dir, f"{claim_id}.json")
+                    
+                    if os.path.exists(old_filepath):
+                        # Mark as discarded
+                        claim["claim_status"] = "DISCARDED"
+                        claim["discarded_at"] = datetime.now().isoformat()
+                        
+                        # Move to discarded directory
+                        new_filepath = os.path.join(self.discarded_dir, f"{claim_id}.json")
+                        
+                        with open(new_filepath, 'w', encoding='utf-8') as f:
+                            json.dump(claim, f, indent=2, ensure_ascii=False)
+                        
+                        # Remove from active claims
+                        os.remove(old_filepath)
+                        
+                        return True
+        
+        return False
+    
+    def update_claim(self, claim_id: str, updates: dict) -> bool:
+        """
+        Update an existing claim with new data.
+        
+        Args:
+            claim_id: The claim ID to update
+            updates: Dictionary of fields to update
+            
+        Returns:
+            True if claim was updated, False if not found
+        """
+        filename = f"{claim_id}.json"
+        filepath = os.path.join(self.claims_dir, filename)
+        
+        if not os.path.exists(filepath):
+            return False
+        
+        # Read existing claim
+        with open(filepath, 'r', encoding='utf-8') as f:
+            claim = json.load(f)
+        
+        # Merge updates
+        for key, value in updates.items():
+            if key == "travel_details":
+                claim.setdefault("travel_details", {}).update(value)
+            elif key == "quality_signals":
+                claim.setdefault("quality_signals", {}).update(value)
+            else:
+                claim[key] = value
+        
+        # Write back
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(claim, f, indent=2, ensure_ascii=False)
+        
+        return True
     
     def read_all_claims(self) -> List[dict]:
         """Read all claim summaries from individual files."""
@@ -581,6 +700,8 @@ class AnalyticsService:
         """
         Pure function to compute all analytics from claims and audit logs.
         
+        NOTE: DRAFT and DISCARDED claims are excluded from all metrics.
+        
         Computes:
         - Processing metrics (counts, percentages)
         - Exception breakdown by type
@@ -589,6 +710,12 @@ class AnalyticsService:
         - Agent behavior metrics
         - Timestamp information
         """
+        
+        # FILTER OUT DRAFT AND DISCARDED CLAIMS
+        claims = [
+            c for c in claims 
+            if c.get("claim_status") not in ["DRAFT", "DISCARDED"]
+        ]
         
         # CLAIMS METRICS
         total_claims = len(claims)

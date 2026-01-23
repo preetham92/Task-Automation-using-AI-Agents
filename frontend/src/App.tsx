@@ -12,7 +12,7 @@ import AuditLogsPage from "@/pages/Financier/AuditsLogPage";
 import History from "./pages/Employee/History";
 import DraftsPage from "./pages/Employee/DraftsPage";
 import NotFound from "./pages/NotFound";
-
+import ReviewPage from "./pages/Financier/ReviewPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,6 +31,7 @@ const App = () => (
             <Route path="/financier" element={<FinancierPage />} />
             <Route path="/financier/dashboard" element={<AnalyticsPage />} />
             <Route path="/financier/audits" element={<AuditLogsPage />} />
+            <Route path="/financier/reviews" element={<ReviewPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

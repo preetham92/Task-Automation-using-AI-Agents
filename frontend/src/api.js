@@ -14,4 +14,6 @@ export const endpoints = {
   analytics: "/analytics",
   claims: "/claims",
   auditLogs: "/audit-logs",
+  employees: "/employees",
+  confirm: "/confirm",
 };
