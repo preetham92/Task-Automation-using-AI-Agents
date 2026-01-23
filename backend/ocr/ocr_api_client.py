@@ -18,21 +18,23 @@ def file_to_base64(file_path):
     extension = Path(file_path).suffix.lower()
     
     if extension == '.pdf':
-        # Open the PDF document
         doc = fitz.open(file_path)
-        # Load the first page (0-indexed)
         page = doc.load_page(0)
         
-        # Increase resolution (zoom). 2.0 = 2x quality.
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+        # Increase resolution to 3x (approx 216 DPI) or 4x (288 DPI)
+        # 3.0 is usually the sweet spot for balance between quality and file size
+        zoom = 3.0 
+        mat = fitz.Matrix(zoom, zoom)
         
-        # Convert to a JPEG bytes buffer
-        img_data = pix.tobytes("jpg")
+        # colorspace=fitz.csGRAY converts to grayscale to help OCR contrast
+        pix = page.get_pixmap(matrix=mat, colorspace=fitz.csGRAY)
+        
+        # Use PNG instead of JPG for lossless quality (better for OCR)
+        img_data = pix.tobytes("png")
         doc.close()
         
         return base64.b64encode(img_data).decode("utf-8")
     
-    # For standard images (PNG, JPG, etc.)
     with open(file_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 

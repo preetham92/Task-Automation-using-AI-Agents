@@ -271,12 +271,21 @@ class DocumentProcessingOrchestrator:
             
             result = self.validator.validate(validation_input)
             
-            # FIX: result is a dict, not an object
-            if not result["is_valid"]:
-                return {
-                    "is_valid": False,
-                    "reason": result["reason"]
-                }
+            # Handle both dict and object responses for backward compatibility
+            if isinstance(result, dict):
+                # New dict-based response
+                if not result.get("is_valid", False):
+                    return {
+                        "is_valid": False,
+                        "reason": result.get("reason", "Unknown validation error")
+                    }
+            else:
+                # Legacy object-based response
+                if not result.is_valid:
+                    return {
+                        "is_valid": False,
+                        "reason": "; ".join(result.remarks) if hasattr(result, 'remarks') else "Validation failed"
+                    }
             
             return {"is_valid": True}
             
