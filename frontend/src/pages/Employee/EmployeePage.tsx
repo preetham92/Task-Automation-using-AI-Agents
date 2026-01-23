@@ -14,15 +14,39 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+
+const mapClaimToTable = (data: any) => {
+  if (!data?.claim_summary) return [];
+
+  const qs = data.claim_summary.quality_signals;
+
+  return [
+    { label: "Claim ID", value: data.claim_id },
+    { label: "File Name", value: data.file_name },
+    { label: "Document Type", value: data.doc_type },
+    { label: "Claim Status", value: data.claim_summary.claim_status },
+    {
+      label: "Exception Reason",
+      value: qs?.exception_reason || "—",
+    },
+    {
+      label: "Confidence",
+      value: qs?.confidence ? `${qs.confidence * 100}%` : "—",
+    },
+    {
+      label: "Processing Time",
+      value: `${data.processing_time_seconds}s`,
+    },
+  ];
+};
+
 export default function EmployeePage() {
   const [file, setFile] = useState<File | null>(null);
 
-  // Maps to 'isUploading' from your snippet
   const [status, setStatus] = useState<
     "idle" | "uploading" | "success" | "error"
   >("idle");
 
-  // Typed with Claim (and 'any' to allow for error objects in the UI catch block)
   const [result, setResult] = useState<Claim | any | null>(null);
 
   const [dragActive, setDragActive] = useState(false);
@@ -59,33 +83,30 @@ export default function EmployeePage() {
   const handleUpload = async () => {
     if (!file) return alert("Please select a file first!");
 
-    setStatus("uploading"); // Equivalent to setIsUploading(true)
+    setStatus("uploading");
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("employee_id", "EMP001"); // Hardcoded as per snippet
+    formData.append("employee_id", "EMP001");
 
     try {
       const response = await api.post(endpoints.upload, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      console.log("Upload Success:", response.data);
-      setResult(response.data); // Matches setUploadResult(response.data)
+      setResult(response.data);
       setStatus("success");
     } catch (error: unknown) {
-      console.error("Upload failed:", error);
       const err = error as {
         response?: { data?: { detail?: string } };
         message?: string;
       };
-      // Preserving UI error display logic
+
       setResult({
         error: err.response?.data?.detail || err.message || "Upload failed",
       });
       setStatus("error");
     }
-    // 'finally' block logic is handled by the setStatus calls above to maintain UI states
   };
 
   return (
@@ -109,7 +130,7 @@ export default function EmployeePage() {
               dragActive
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/50 hover:bg-card/50",
-              file && "border-success/50 bg-success/5",
+              file && "border-success/50 bg-success/5"
             )}
           >
             <input
@@ -125,7 +146,7 @@ export default function EmployeePage() {
                   "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto transition-colors",
                   file
                     ? "bg-success/10 text-success"
-                    : "bg-primary/10 text-primary",
+                    : "bg-primary/10 text-primary"
                 )}
               >
                 {file ? <FileText size={28} /> : <Upload size={28} />}
@@ -137,8 +158,7 @@ export default function EmployeePage() {
                     {file.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {(file.size / 1024).toFixed(1)} KB • Click or drag to
-                    replace
+                    {(file.size / 1024).toFixed(1)} KB • Click or drag to replace
                   </p>
                 </>
               ) : (
@@ -163,7 +183,7 @@ export default function EmployeePage() {
               className={cn(
                 "min-w-[200px] gap-2",
                 status === "success" && "bg-success hover:bg-success/90",
-                status === "error" && "bg-destructive hover:bg-destructive/90",
+                status === "error" && "bg-destructive hover:bg-destructive/90"
               )}
             >
               {status === "uploading" ? (
@@ -191,15 +211,45 @@ export default function EmployeePage() {
           </div>
         </GlassCard>
 
-        {/* Result Display */}
-        {!!result && (
+        {/* Result Table */}
+        {!!result && status === "success" && (
           <GlassCard className="animate-scale-in">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-              Analysis Result
+            <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">
+              Claim Details
             </h3>
-            <pre className="bg-background/50 p-4 rounded-lg overflow-x-auto text-sm font-mono text-muted-foreground border border-border/50">
-              {JSON.stringify(result, null, 2)}
-            </pre>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border border-border/50 rounded-lg">
+                <tbody>
+                  {mapClaimToTable(result).map((row) => (
+                    <tr
+                      key={row.label}
+                      className="border-b last:border-b-0 border-border/50"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-muted-foreground bg-background/40 w-1/3">
+                        {row.label}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-foreground">
+                        {row.value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFile(null);
+                  setResult(null);
+                  setStatus("idle");
+                }}
+              >
+                Edit & Re-upload
+              </Button>
+            </div>
           </GlassCard>
         )}
       </div>
