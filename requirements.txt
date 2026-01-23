@@ -1,0 +1,22 @@
+# Core backend framework
+fastapi
+uvicorn
+
+# HTTP requests (OCR APIs, LLM calls)
+requests
+
+# Data handling
+pandas
+
+# Validation and schemas
+pydantic
+
+# File handling (PDFs, images)
+python-multipart
+pillow
+
+# OCR support (if using Tesseract-based OCR)
+pytesseract
+
+# Logging & utilities
+python-dotenv
