@@ -333,15 +333,8 @@ class DocumentProcessingOrchestrator:
         })
     
     @staticmethod
-    def _add_exception_claim(
-        claim_summaries: List[dict],
-        data: dict,
-        employee_id: str,
-        claim_id: str,
-        exc_type: str,
-        reason: str
-    ) -> None:
-        """Append exception claim summary."""
+    def _add_exception_claim(claim_summaries: List[dict], data: dict, employee_id: str, claim_id: str, exc_type: str, reason: str) -> None:
+        """Append exception claim summary WITH extracted data."""
         normalized = exception_agent(
             data={**data, "employee_id": employee_id, "claim_id": claim_id},
             validation={"reason": reason},
@@ -354,11 +347,16 @@ class DocumentProcessingOrchestrator:
             "claim_id": claim_id,
             "employee_id": employee_id,
             "claim_status": "REQUIRES_REVIEW",
+            "travel_details": {
+                # Save this so Analytics can see the 'estimated' cost
+                "fare_amount": data.get("fare_amount"), 
+                "doc_type": data.get("doc_type"),
+                "date": data.get("date")
+            },
             "quality_signals": {
                 "exception_type": exc_type,
                 "exception_reason": reason,
                 "confidence": data.get("confidence"),
-                "missing_fields": missing_fields,
                 "doc_type": data.get("doc_type")
             }
         })
@@ -531,140 +529,127 @@ class ClaimDataStore:
 class AnalyticsService:
     """
     Generates analytics dynamically from storage.
-    
-    RESPONSIBILITIES:
-    - Read claims and audit logs from storage
-    - Compute all metrics fresh on every request
-    - Return complete analytics JSON
-    
-    DOES NOT:
-    - Store computed values
-    - Maintain state
-    - Trigger orchestrator
-    
-    TRIGGERED BY: Dashboard page load/refresh
     """
     
     def __init__(self, data_store: ClaimDataStore):
         self.data_store = data_store
     
     def get_full_analytics(self) -> dict:
-        """
-        Compute complete analytics from storage.
-        
-        Returns complete analytics report with all metrics.
-        """
         claims = self.data_store.read_all_claims()
         audit_logs = self.data_store.read_all_audit_logs()
-        
         return self._compute_analytics(claims, audit_logs)
     
     def get_employee_analytics(self, employee_id: str) -> dict:
-        """Compute analytics for specific employee."""
         claims = self.data_store.read_claims_by_employee(employee_id)
         all_logs = self.data_store.read_all_audit_logs()
         audit_logs = [l for l in all_logs if l.get("employee_id") == employee_id]
-        
         return self._compute_analytics(claims, audit_logs)
-    
-    def get_exception_summary(self) -> dict:
-        """Get exception breakdown."""
-        analytics = self.get_full_analytics()
-        return analytics.get("exception_breakdown", {})
-    
-    def get_performance_metrics(self) -> dict:
-        """Get performance metrics."""
-        analytics = self.get_full_analytics()
-        return analytics.get("performance_metrics", {})
-    
+
     def _compute_analytics(self, claims: List[dict], audit_logs: List[dict]) -> dict:
         """
-        Pure function to compute all analytics from claims and audit logs.
-        
-        Computes:
-        - Processing metrics (counts, percentages)
-        - Exception breakdown by type
-        - Performance metrics (processing times)
-        - API usage statistics
-        - Agent behavior metrics
-        - Timestamp information
+        Calculates all metrics in a single pass for efficiency.
         """
-        
-        # CLAIMS METRICS
+        # --- 1. INITIALIZE DATA STRUCTURES ---
         total_claims = len(claims)
-        validated_claims = sum(
-            1 for c in claims 
-            if c.get("claim_status") == "READY_FOR_FINANCE_APPROVAL"
-        )
-        requires_review = sum(
-            1 for c in claims 
-            if c.get("claim_status") == "REQUIRES_REVIEW"
-        )
-        validation_rate = (validated_claims / total_claims * 100) if total_claims > 0 else 0
+        validated_claims = 0
+        requires_review = 0
         
-        # EXCEPTION BREAKDOWN
+        by_type_map = defaultdict(float)
+        timeline_data = []
         exception_counts = defaultdict(int)
-        for claim in claims:
-            exc_type = claim.get("quality_signals", {}).get("exception_type")
-            if exc_type:
-                exception_counts[exc_type] += 1
         
-        # PROCESSING TIME METRICS (per claim from audit logs)
         claim_processing_times = defaultdict(float)
-        for log in audit_logs:
-            claim_id = log.get("claim_id")
-            proc_time = log.get("processing_time_seconds", 0)
-            claim_processing_times[claim_id] += proc_time
-        
-        processing_times = list(claim_processing_times.values())
-        
-        avg_processing_time = sum(processing_times) / len(processing_times) if processing_times else None
-        min_processing_time = min(processing_times) if processing_times else None
-        max_processing_time = max(processing_times) if processing_times else None
-        
-        # API USAGE METRICS
         total_api_calls = 0
         api_calls_by_agent = defaultdict(int)
         api_calls_per_claim = defaultdict(int)
         
-        for log in audit_logs:
-            api_calls = log.get("api_calls", [])
-            claim_id = log.get("claim_id")
-            agent = log.get("agent")
-            
-            call_count = len(api_calls)
-            total_api_calls += call_count
-            api_calls_by_agent[agent] += call_count
-            api_calls_per_claim[claim_id] += call_count
-        
-        # AGENT BEHAVIOR METRICS
         agent_executions = defaultdict(int)
         agent_success = defaultdict(int)
         agent_exceptions = defaultdict(int)
         
+        claim_timestamps = defaultdict(lambda: {"first": None, "last": None})
+
+        # --- 2. PROCESS CLAIMS DATA ---
+        for claim in claims:
+            status = claim.get("claim_status")
+            if status == "READY_FOR_FINANCE_APPROVAL":
+                validated_claims += 1
+            else:
+                requires_review += 1
+            
+            # --- IMPROVED AGGREGATION LOGIC ---
+            details = claim.get("travel_details", {})
+            quality = claim.get("quality_signals", {})
+            
+            # 1. Fallback for doc_type
+            doc_type = details.get("doc_type") or quality.get("doc_type") or "other"
+            
+            # 2. Robust amount parsing
+            try:
+                # Check travel_details first, then quality_signals for raw extracted data
+                raw_amt = details.get("fare_amount") or quality.get("fare_amount") or 0
+                
+                # Sanitize the string (remove symbols and commas)
+                if isinstance(raw_amt, str):
+                    clean_amt = raw_amt.replace("₹", "").replace("$", "").replace(",", "").strip()
+                    amount = float(clean_amt) if clean_amt else 0.0
+                else:
+                    amount = float(raw_amt)
+            except (ValueError, TypeError):
+                amount = 0.0
+
+            clean_type = str(doc_type).replace("_", " ").title()
+            by_type_map[clean_type] += amount
+
+            # 3. Timeline Data with fallback date
+            date_val = details.get("date") or quality.get("date")
+            if date_val and str(date_val).lower() != "null":
+                timeline_data.append({"date": date_val, "amount": amount})
+            # ----------------------------------
+
+            # Exception Counts
+            exc_type = quality.get("exception_type")
+            if exc_type:
+                exception_counts[exc_type] += 1
+
+        # --- 3. PROCESS AUDIT LOGS ---
         for log in audit_logs:
+            c_id = log.get("claim_id")
             agent = log.get("agent")
             status = log.get("status")
-            
+            ts = log.get("timestamp")
+            calls = log.get("api_calls", [])
+
+            # Processing Times
+            proc_time = log.get("processing_time_seconds", 0)
+            claim_processing_times[c_id] += proc_time
+
+            # API Usage
+            call_count = len(calls)
+            total_api_calls += call_count
+            api_calls_by_agent[agent] += call_count
+            api_calls_per_claim[c_id] += call_count
+
+            # Agent Behavior
             agent_executions[agent] += 1
-            
             if status == "success":
                 agent_success[agent] += 1
-            elif status == "exception":
+            else:
                 agent_exceptions[agent] += 1
+
+            # Timestamps
+            if not claim_timestamps[c_id]["first"]:
+                claim_timestamps[c_id]["first"] = ts
+            claim_timestamps[c_id]["last"] = ts
+
+        # --- 4. FINAL CALCULATIONS ---
+        validation_rate = (validated_claims / total_claims * 100) if total_claims > 0 else 0
+        timeline_data.sort(key=lambda x: x['date'])
         
-        # TIMESTAMP METRICS
-        claim_timestamps = defaultdict(lambda: {"first": None, "last": None})
-        
-        for log in audit_logs:
-            claim_id = log.get("claim_id")
-            timestamp = log.get("timestamp")
-            
-            if not claim_timestamps[claim_id]["first"]:
-                claim_timestamps[claim_id]["first"] = timestamp
-            claim_timestamps[claim_id]["last"] = timestamp
-        
-        # BUILD COMPLETE ANALYTICS RESPONSE
+        proc_list = list(claim_processing_times.values())
+        avg_proc = sum(proc_list) / len(proc_list) if proc_list else 0
+
+        # --- 5. RETURN UNIFIED RESPONSE ---
         return {
             "processing_metrics": {
                 "total_claims_processed": total_claims,
@@ -672,26 +657,16 @@ class AnalyticsService:
                 "requires_review_claims": requires_review,
                 "validation_rate_percentage": round(validation_rate, 2)
             },
+            "expense_by_type": [{"type": k, "amount": round(v, 2)} for k, v in by_type_map.items()],
+            "expense_timeline": timeline_data,
             "exception_breakdown": {
                 "total_exceptions": requires_review,
-                "exceptions_by_type": {
-                    "SYSTEM_EXCEPTION": exception_counts.get("SYSTEM_EXCEPTION", 0),
-                    "EXTRACTION_EXCEPTION": exception_counts.get("EXTRACTION_EXCEPTION", 0),
-                    "CONFIDENCE_EXCEPTION": exception_counts.get("CONFIDENCE_EXCEPTION", 0),
-                    "BUSINESS_EXCEPTION": exception_counts.get("BUSINESS_EXCEPTION", 0),
-                    "DOCUMENT_TYPE_EXCEPTION": exception_counts.get("DOCUMENT_TYPE_EXCEPTION", 0),
-                    "DUPLICATE_EXCEPTION": exception_counts.get("DUPLICATE_EXCEPTION", 0)
-                }
+                "exceptions_by_type": dict(exception_counts)
             },
             "performance_metrics": {
-                "total_processing_time_seconds": round(sum(processing_times), 3) if processing_times else None,
-                "average_processing_time_seconds": round(avg_processing_time, 3) if avg_processing_time else None,
-                "min_processing_time_seconds": round(min_processing_time, 3) if min_processing_time else None,
-                "max_processing_time_seconds": round(max_processing_time, 3) if max_processing_time else None,
-                "claim_processing_times": {
-                    claim_id: round(time, 3) 
-                    for claim_id, time in claim_processing_times.items()
-                }
+                "total_processing_time_seconds": round(sum(proc_list), 3) if proc_list else 0,
+                "average_processing_time_seconds": round(avg_proc, 3),
+                "claim_processing_times": {k: round(v, 3) for k, v in claim_processing_times.items()}
             },
             "api_usage": {
                 "total_api_calls": total_api_calls,
@@ -703,11 +678,5 @@ class AnalyticsService:
                 "agent_success_count": dict(agent_success),
                 "agent_exception_count": dict(agent_exceptions)
             },
-            "timestamps": {
-                claim_id: {
-                    "first_timestamp": ts["first"],
-                    "last_timestamp": ts["last"]
-                }
-                for claim_id, ts in claim_timestamps.items()
-            }
+            "timestamps": dict(claim_timestamps)
         }

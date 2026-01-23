@@ -4,13 +4,7 @@ import { FinancierLayout } from "@/components/layout/FinancierLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import {
-  BarChart3,
-  Database,
-  Plane,
-  Train,
-  Car,
-} from "lucide-react";
+import { BarChart3, Database, Plane, Train, Car } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -30,12 +24,13 @@ export default function AnalyticsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Calling the Summary Agent through the FastAPI /analytics endpoint
-      const statsRes = await api.get(endpoints.analytics);
-      setAnalytics(statsRes.data);
+      // Parallel fetching for better performance
+      const [statsRes, claimsRes] = await Promise.all([
+        api.get(endpoints.analytics),
+        api.get(endpoints.claims),
+      ]);
 
-      // 2. Fetching the processed claims for the report table
-      const claimsRes = await api.get(endpoints.claims);
+      setAnalytics(statsRes.data);
       setClaims(claimsRes.data.claims);
     } catch (err) {
       console.error("Dashboard Sync Error:", err);
@@ -48,6 +43,12 @@ export default function AnalyticsPage() {
     fetchData();
   }, []);
 
+  // Use pre-processed data from backend
+  const expenseByType = analytics?.expense_by_type || [];
+  const expenseTimeline = analytics?.expense_timeline || [];
+
+  console.log("Chart Data Check:", { expenseByType, expenseTimeline });
+
   const getDocIcon = (type: string) => {
     const t = type?.toLowerCase() || "";
     if (t.includes("airline") || t.includes("boarding"))
@@ -56,26 +57,6 @@ export default function AnalyticsPage() {
       return <Train className="text-orange-400" size={18} />;
     return <Car className="text-yellow-400" size={18} />;
   };
-
-  const expenseByType = claims.reduce((acc: any[], claim) => {
-  const type = claim.doc_type || "other";
-  const amount = claim.travel_details?.fare_amount || 0;
-
-  const existing = acc.find((i) => i.type === type);
-  if (existing) {
-    existing.amount += amount;
-  } else {
-    acc.push({ type, amount });
-  }
-  return acc;
-}, []);
-
-const expenseTimeline = claims
-  .map((claim) => ({
-    date: claim.travel_details?.date,
-    amount: claim.travel_details?.fare_amount || 0,
-  }))
-  .filter((i) => i.date);
 
   if (loading)
     return (
@@ -95,87 +76,105 @@ const expenseTimeline = claims
           icon={BarChart3}
         />
 
-        {/* --- PERFORMANCE METRICS (Summary Agent Output) --- */}
+        {/* --- PERFORMANCE METRICS --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <GlassCard className="p-5 border-l-4 border-l-purple-500">
             <span className="text-sm text-gray-400 font-medium">
               Auto-Validated
             </span>
             <div className="text-3xl font-bold mt-1">
-              {analytics?.processing_metrics?.validated_claims}
+              {analytics?.processing_metrics?.validated_claims || 0}
             </div>
           </GlassCard>
+
           <GlassCard className="p-5 border-l-4 border-l-blue-500">
             <span className="text-sm text-gray-400 font-medium">
               Avg Velocity
             </span>
             <div className="text-3xl font-bold mt-1">
-              {analytics?.performance_metrics?.average_processing_time_seconds}s
+              {analytics?.performance_metrics
+                ?.average_processing_time_seconds || 0}
+              s
             </div>
           </GlassCard>
+
           <GlassCard className="p-5 border-l-4 border-l-emerald-500">
             <span className="text-sm text-gray-400 font-medium">
               Success Rate
             </span>
             <div className="text-3xl font-bold mt-1">
-              {analytics?.processing_metrics?.validation_rate_percentage}%
+              {analytics?.processing_metrics?.validation_rate_percentage || 0}%
             </div>
           </GlassCard>
+
           <GlassCard className="p-5 border-l-4 border-l-red-500">
             <span className="text-sm text-gray-400 font-medium">
               System Exceptions
             </span>
             <div className="text-3xl font-bold mt-1 text-red-400">
-              {analytics?.exception_breakdown?.total_exceptions}
+              {analytics?.exception_breakdown?.total_exceptions || 0}
             </div>
           </GlassCard>
         </div>
 
         {/* --- EXPENSE ANALYTICS --- */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-  <GlassCard className="p-6">
-    <h3 className="text-sm font-semibold text-gray-400 mb-4">
-      Expenses by Transport Type
-    </h3>
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={expenseByType}>
-          <XAxis
-            dataKey="type"
-            tick={{ fill: "#9CA3AF", fontSize: 12 }}
-          />
-          <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
-          <Tooltip />
-          <Bar dataKey="amount" />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </GlassCard>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <GlassCard className="p-6">
+            <h3 className="text-sm font-semibold text-gray-400 mb-4">
+              Expenses by Transport Type
+            </h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={expenseByType}>
+                  <XAxis
+                    dataKey="type"
+                    tick={{ fill: "#9CA3AF", fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111827",
+                      border: "1px solid #374151",
+                    }}
+                    itemStyle={{ color: "#A78BFA" }}
+                  />
+                  <Bar dataKey="amount" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </GlassCard>
 
-  <GlassCard className="p-6">
-    <h3 className="text-sm font-semibold text-gray-400 mb-4">
-      Expense Trend Over Time
-    </h3>
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={expenseTimeline}>
-          <XAxis
-            dataKey="date"
-            tick={{ fill: "#9CA3AF", fontSize: 12 }}
-          />
-          <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="amount"
-            strokeWidth={2}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  </GlassCard>
-</div>
-
+          <GlassCard className="p-6">
+            <h3 className="text-sm font-semibold text-gray-400 mb-4">
+              Expense Trend Over Time
+            </h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={expenseTimeline}>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: "#9CA3AF", fontSize: 12 }}
+                  />
+                  <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111827",
+                      border: "1px solid #374151",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#3B82F6"
+                    strokeWidth={3}
+                    dot={{ fill: "#3B82F6", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </GlassCard>
+        </div>
 
         {/* --- PROCESSED DOCUMENTS REPORT TABLE --- */}
         <GlassCard>
@@ -210,9 +209,7 @@ const expenseTimeline = claims
                       </span>
                     </td>
                     <td className="p-4 font-medium">
-                      {claim.travel_details?.passenger_name ||
-                        claim.quality_signals?.passenger_name ||
-                        "N/A"}
+                      {claim.travel_details?.passenger_name || "N/A"}
                     </td>
                     <td className="p-4 text-gray-400">
                       {claim.travel_details?.from_location || "-"}
@@ -231,7 +228,11 @@ const expenseTimeline = claims
                     </td>
                     <td className="p-4 text-center">
                       <span
-                        className={`px-2 py-1 rounded text-[10px] font-bold ${claim.claim_status === "READY_FOR_FINANCE_APPROVAL" ? "text-emerald-400 bg-emerald-400/10" : "text-yellow-400 bg-yellow-400/10"}`}
+                        className={`px-2 py-1 rounded text-[10px] font-bold ${
+                          claim.claim_status === "READY_FOR_FINANCE_APPROVAL"
+                            ? "text-emerald-400 bg-emerald-400/10"
+                            : "text-yellow-400 bg-yellow-400/10"
+                        }`}
                       >
                         {claim.claim_status === "READY_FOR_FINANCE_APPROVAL"
                           ? "VALIDATED"
