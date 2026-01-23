@@ -1,4 +1,10 @@
-import { BarChart3, ShieldCheck, Briefcase, Home } from "lucide-react";
+import {
+  BarChart3,
+  ShieldCheck,
+  Briefcase,
+  Home,
+  FileText,
+} from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -19,6 +25,7 @@ const menuItems = [
   { title: "Overview", url: "/financier", icon: Briefcase },
   { title: "Analytics", url: "/financier/dashboard", icon: BarChart3 },
   { title: "Audit Logs", url: "/financier/audits", icon: ShieldCheck },
+  { title: "Review Documents", url: "/financier/reviews", icon: FileText },
 ];
 
 export function FinancierSidebar() {
@@ -35,7 +42,7 @@ export function FinancierSidebar() {
           to="/"
           className="flex items-center gap-3 text-foreground hover:text-success transition-colors"
         >
-          <div className="p-2 rounded-lg bg-success/10">
+          <div className="p-0 rounded-lg bg-success/8">
             <Home className="h-5 w-5 text-success" />
           </div>
           {!collapsed && <span className="font-semibold">Finance Console</span>}

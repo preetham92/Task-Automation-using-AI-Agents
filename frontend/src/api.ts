@@ -12,6 +12,7 @@ export const api = axios.create({
 export const endpoints = {
   upload: "/upload",
   analytics: "/analytics",
+  confirm: "/confirm",
   claims: "/claims",
   auditLogs: "/audit-logs",
   employeeClaims: (id: string) => `/claims/employee/${id}`,
