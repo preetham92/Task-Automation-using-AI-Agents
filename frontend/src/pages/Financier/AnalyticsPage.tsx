@@ -11,6 +11,16 @@ import {
   Train,
   Car,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<any>(null);
@@ -46,6 +56,26 @@ export default function AnalyticsPage() {
       return <Train className="text-orange-400" size={18} />;
     return <Car className="text-yellow-400" size={18} />;
   };
+
+  const expenseByType = claims.reduce((acc: any[], claim) => {
+  const type = claim.doc_type || "other";
+  const amount = claim.travel_details?.fare_amount || 0;
+
+  const existing = acc.find((i) => i.type === type);
+  if (existing) {
+    existing.amount += amount;
+  } else {
+    acc.push({ type, amount });
+  }
+  return acc;
+}, []);
+
+const expenseTimeline = claims
+  .map((claim) => ({
+    date: claim.travel_details?.date,
+    amount: claim.travel_details?.fare_amount || 0,
+  }))
+  .filter((i) => i.date);
 
   if (loading)
     return (
@@ -100,6 +130,52 @@ export default function AnalyticsPage() {
             </div>
           </GlassCard>
         </div>
+
+        {/* --- EXPENSE ANALYTICS --- */}
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <GlassCard className="p-6">
+    <h3 className="text-sm font-semibold text-gray-400 mb-4">
+      Expenses by Transport Type
+    </h3>
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={expenseByType}>
+          <XAxis
+            dataKey="type"
+            tick={{ fill: "#9CA3AF", fontSize: 12 }}
+          />
+          <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
+          <Tooltip />
+          <Bar dataKey="amount" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  </GlassCard>
+
+  <GlassCard className="p-6">
+    <h3 className="text-sm font-semibold text-gray-400 mb-4">
+      Expense Trend Over Time
+    </h3>
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={expenseTimeline}>
+          <XAxis
+            dataKey="date"
+            tick={{ fill: "#9CA3AF", fontSize: 12 }}
+          />
+          <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
+          <Tooltip />
+          <Line
+            type="monotone"
+            dataKey="amount"
+            strokeWidth={2}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </GlassCard>
+</div>
+
 
         {/* --- PROCESSED DOCUMENTS REPORT TABLE --- */}
         <GlassCard>

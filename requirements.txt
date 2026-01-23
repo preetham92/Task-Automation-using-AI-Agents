@@ -17,7 +17,7 @@ pillow
 
 # OCR support (if using Tesseract-based OCR)
 pytesseract
-
+pymupdf
 # Logging & utilities
 python-dotenv
 
