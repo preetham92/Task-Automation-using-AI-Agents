@@ -1,6 +1,24 @@
-node_modules
-dist
-dist-ssr
-*.local
-.vscode
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+ENV/
+
+# ===== Node =====
+node_modules/
+dist/
+build/
+
+# ===== Logs & runtime data =====
+*.log
+backend/data/output/
+backend/data/storage/
+
+# ===== OS / Editor =====
+.vscode/
 .DS_Store
+Thumbs.db
