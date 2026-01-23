@@ -20,3 +20,47 @@ pytesseract
 
 # Logging & utilities
 python-dotenv
+
+# Runtime Environment
+Node.js >= 18.x
+npm >= 9.x
+
+# Core Framework
+React 18.x
+React DOM 18.x
+
+# Build Tooling
+Vite 5.x
+@vitejs/plugin-react
+
+# Language Support
+TypeScript 5.x
+
+# Styling
+Tailwind CSS 3.x
+PostCSS 8.x
+Autoprefixer 10.x
+
+# UI Components
+shadcn/ui (file-based components)
+lucide-react
+next-themes
+sonner
+
+# State Management & API
+@tanstack/react-query 5.x
+axios 1.x
+
+# Utilities
+clsx
+tailwind-merge
+
+# Linting & Quality
+ESLint
+eslint-plugin-react
+eslint-plugin-react-hooks
+
+# Testing
+Vitest
+@testing-library/react
+@testing-library/jest-dom
