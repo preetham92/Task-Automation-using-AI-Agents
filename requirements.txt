@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Core backend framework
 fastapi
 uvicorn
@@ -64,3 +65,10 @@ eslint-plugin-react-hooks
 Vitest
 @testing-library/react
 @testing-library/jest-dom
+=======
+requests
+fastapi
+uvicorn
+python-multipart
+pandas
+>>>>>>> 564fa4560773a75a37ceb8c2a7b18214bae0fc75
