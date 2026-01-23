@@ -271,10 +271,11 @@ class DocumentProcessingOrchestrator:
             
             result = self.validator.validate(validation_input)
             
-            if not result.is_valid:
+            # FIX: result is a dict, not an object
+            if not result["is_valid"]:
                 return {
                     "is_valid": False,
-                    "reason": "; ".join(result.remarks)
+                    "reason": result["reason"]
                 }
             
             return {"is_valid": True}
