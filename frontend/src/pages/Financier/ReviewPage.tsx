@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+<<<<<<< HEAD
 import { api } from "@/api";
+=======
+import { mockClaimsData } from "@/data/mockClaims";
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
 import { FinancierLayout } from "@/components/layout/FinancierLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -18,9 +22,15 @@ import {
 import {
   Dialog,
   DialogContent,
+<<<<<<< HEAD
   DialogDescription,
   DialogHeader,
   DialogTitle,
+=======
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,15 +66,25 @@ export default function ReviewPage() {
   const [approvedAmount, setApprovedAmount] = useState("");
   const [financeNotes, setFinanceNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+<<<<<<< HEAD
   const [statusFilter, setStatusFilter] = useState<
     "ALL" | "PENDING_FINANCE_REVIEW" | "APPROVED" | "REJECTED"
   >("ALL");
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
 
   const fetchSubmissions = async () => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       const response = await api.get("/submissions");
       setSubmissions(response.data?.submissions || []);
+=======
+      // Simulate network delay to make it feel real
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      // Use Mock Data directly
+      setSubmissions(mockClaimsData);
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
     } catch (err) {
       console.error("Failed to load submissions:", err);
     } finally {
@@ -76,6 +96,7 @@ export default function ReviewPage() {
     fetchSubmissions();
   }, []);
 
+<<<<<<< HEAD
   const handleViewSubmission = async (submission: Submission) => {
     try {
       const response = await api.get(`/submissions/${submission.claim_id}`);
@@ -87,12 +108,22 @@ export default function ReviewPage() {
     } catch (err) {
       console.error("Failed to load submission details:", err);
     }
+=======
+  const handleViewSubmission = (submission: Submission) => {
+    setSelectedSubmission(submission);
+    setApprovedAmount(submission.total_amount?.toString() || "");
+    setFinanceNotes(submission.finance_notes || "");
+    setModalOpen(true);
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
   };
 
   const handleDecision = async (decision: "APPROVED" | "REJECTED") => {
     if (!selectedSubmission) return;
 
+<<<<<<< HEAD
     // Validate approved amount for approval
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
     if (decision === "APPROVED") {
       const amount = parseFloat(approvedAmount);
       if (isNaN(amount) || amount <= 0) {
@@ -101,6 +132,7 @@ export default function ReviewPage() {
       }
     }
 
+<<<<<<< HEAD
     try {
       setSubmitting(true);
       await api.post(`/submissions/${selectedSubmission.claim_id}/decision`, {
@@ -122,6 +154,32 @@ export default function ReviewPage() {
     } finally {
       setSubmitting(false);
     }
+=======
+    setSubmitting(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Update local state since we don't have a backend
+    const updatedSubmissions = submissions.map((s) =>
+      s.claim_id === selectedSubmission.claim_id
+        ? {
+            ...s,
+            status: decision,
+            approved_amount:
+              decision === "APPROVED" ? parseFloat(approvedAmount) : 0,
+            finance_notes: financeNotes,
+            finance_decision_timestamp: new Date().toISOString(),
+          }
+        : s,
+    );
+    setSubmissions(updatedSubmissions);
+
+    setModalOpen(false);
+    setSelectedSubmission(null);
+    setApprovedAmount("");
+    setFinanceNotes("");
+    setSubmitting(false);
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
   };
 
   const getStatusBadge = (status: string) => {
@@ -157,7 +215,10 @@ export default function ReviewPage() {
     );
   };
 
+<<<<<<< HEAD
   // Calculate summary stats
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
   const pendingCount = submissions.filter(
     (s) => s.status === "PENDING_FINANCE_REVIEW",
   ).length;
@@ -169,12 +230,16 @@ export default function ReviewPage() {
   ).length;
   const totalApprovedAmount = submissions
     .filter((s) => s.status === "APPROVED")
+<<<<<<< HEAD
     .reduce((sum, s) => sum + (s.approved_amount || 0), 0);
 
   const filteredSubmissions =
     statusFilter === "ALL"
       ? submissions
       : submissions.filter((s) => s.status === statusFilter);
+=======
+    .reduce((sum, s) => sum + (s.approved_amount || s.total_amount || 0), 0);
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
 
   if (loading)
     return (
@@ -194,7 +259,10 @@ export default function ReviewPage() {
           icon={FileSearch}
         />
 
+<<<<<<< HEAD
         {/* Summary Stats */}
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <GlassCard className="p-3">
             <div className="flex items-center gap-2">
@@ -253,6 +321,7 @@ export default function ReviewPage() {
           </GlassCard>
         </div>
 
+<<<<<<< HEAD
         {/* Submissions Table */}
         <GlassCard>
           <div className="p-4 border-b border-gray-800">
@@ -278,6 +347,9 @@ export default function ReviewPage() {
               </select>
             </div>
           </div>
+=======
+        <GlassCard>
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-separate border-spacing-0">
               <thead className="bg-gray-900/50 text-gray-500 uppercase font-bold text-[10px] tracking-widest border-b border-gray-800">
@@ -292,8 +364,13 @@ export default function ReviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
+<<<<<<< HEAD
                 {filteredSubmissions.length > 0 ? (
                   filteredSubmissions.map((submission) => (
+=======
+                {submissions.length > 0 ? (
+                  submissions.map((submission) => (
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                     <tr
                       key={submission.claim_id}
                       className="hover:bg-gray-800/30 transition-colors group"
@@ -329,6 +406,7 @@ export default function ReviewPage() {
                           <DollarSign size={12} />
                           {submission.total_amount.toLocaleString()}
                         </div>
+<<<<<<< HEAD
                         {submission.approved_amount !== undefined &&
                           submission.approved_amount !==
                             submission.total_amount && (
@@ -337,6 +415,8 @@ export default function ReviewPage() {
                               {submission.approved_amount.toLocaleString()}
                             </div>
                           )}
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center">
@@ -348,7 +428,11 @@ export default function ReviewPage() {
                           <Calendar size={12} />
                           {new Date(
                             submission.submission_timestamp,
+<<<<<<< HEAD
                           ).toLocaleString()}
+=======
+                          ).toLocaleDateString()}
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                         </div>
                       </td>
                       <td className="p-4">
@@ -397,11 +481,16 @@ export default function ReviewPage() {
 
           {selectedSubmission && (
             <div className="space-y-6 py-4">
+<<<<<<< HEAD
               {/* Two Column Layout: Info + Document Preview */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Column: Employee & Travel Info */}
                 <div className="space-y-4">
                   {/* Employee Information */}
+=======
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                   <div className="space-y-3">
                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide">
                       Employee Information
@@ -428,7 +517,10 @@ export default function ReviewPage() {
                     </div>
                   </div>
 
+<<<<<<< HEAD
                   {/* Travel Information */}
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                   <div className="space-y-3">
                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide">
                       Travel Information
@@ -457,7 +549,10 @@ export default function ReviewPage() {
                     </div>
                   </div>
 
+<<<<<<< HEAD
                   {/* Claimed Amount */}
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                   <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-800">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-400">
@@ -537,6 +632,7 @@ export default function ReviewPage() {
                           <span className="text-sm text-gray-400">Status:</span>
                           {getStatusBadge(selectedSubmission.status)}
                         </div>
+<<<<<<< HEAD
                         {selectedSubmission.approved_amount !== undefined && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-400">
@@ -570,12 +666,17 @@ export default function ReviewPage() {
                             </span>
                           </div>
                         )}
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                       </div>
                     </div>
                   )}
                 </div>
 
+<<<<<<< HEAD
                 {/* Right Column: Document Preview */}
+=======
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
                     <FileText className="text-blue-400" size={16} />
@@ -586,6 +687,7 @@ export default function ReviewPage() {
                       <span className="text-xs text-gray-400 font-mono">
                         {selectedSubmission.original_filename}
                       </span>
+<<<<<<< HEAD
                       <a
                         href={`http://localhost:9002/files/${selectedSubmission.claim_id}/${selectedSubmission.document_filename}`}
                         target="_blank"
@@ -600,6 +702,13 @@ export default function ReviewPage() {
                       className="w-full h-[500px] bg-white"
                       title="Document Preview"
                     />
+=======
+                    </div>
+                    {/* Placeholder for iframe - in a real app this would point to a file URL */}
+                    <div className="w-full h-[500px] bg-white flex items-center justify-center text-gray-500">
+                      [Document Preview: {selectedSubmission.original_filename}]
+                    </div>
+>>>>>>> 007cd4261468c478c0da23605f6f00a6f623047e
                   </div>
                 </div>
               </div>
