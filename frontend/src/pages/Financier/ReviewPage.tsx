@@ -57,6 +57,9 @@ export default function ReviewPage() {
   const [approvedAmount, setApprovedAmount] = useState("");
   const [financeNotes, setFinanceNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "PENDING_FINANCE_REVIEW" | "APPROVED" | "REJECTED"
+  >("ALL");
 
   const fetchSubmissions = async () => {
     try {
@@ -169,6 +172,11 @@ export default function ReviewPage() {
     .filter((s) => s.status === "APPROVED")
     .reduce((sum, s) => sum + (s.approved_amount || 0), 0);
 
+  const filteredSubmissions =
+    statusFilter === "ALL"
+      ? submissions
+      : submissions.filter((s) => s.status === statusFilter);
+
   if (loading)
     return (
       <FinancierLayout>
@@ -248,6 +256,29 @@ export default function ReviewPage() {
 
         {/* Submissions Table */}
         <GlassCard>
+          <div className="p-4 border-b border-gray-800">
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="statusFilter"
+                className="text-xs text-gray-400 font-medium"
+              >
+                Filter by Status:
+              </label>
+              <select
+                id="statusFilter"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as typeof statusFilter)
+                }
+                className="bg-gray-900 border border-gray-700 text-gray-200 text-xs rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="ALL">All</option>
+                <option value="PENDING_FINANCE_REVIEW">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-separate border-spacing-0">
               <thead className="bg-gray-900/50 text-gray-500 uppercase font-bold text-[10px] tracking-widest border-b border-gray-800">
@@ -262,8 +293,8 @@ export default function ReviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {submissions.length > 0 ? (
-                  submissions.map((submission) => (
+                {filteredSubmissions.length > 0 ? (
+                  filteredSubmissions.map((submission) => (
                     <tr
                       key={submission.claim_id}
                       className="hover:bg-gray-800/30 transition-colors group"
