@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Task Automation using AI Agents
 
 ## Overview
