@@ -286,8 +286,7 @@ http://localhost:5173
 * Advanced LLM routing
 * Real-time document uploads
 
-Just tell me what you need.
-=======
+
 ---
 
 ## Key Features
@@ -306,4 +305,4 @@ Just tell me what you need.
 - Uses synthetic or publicly available documents only
 - No real personal or sensitive data processed
 - Complete auditability through structured logs and outputs
->>>>>>> 564fa4560773a75a37ceb8c2a7b18214bae0fc75
+
